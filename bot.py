@@ -23,7 +23,6 @@ CATEGORY, PHOTO, DESCRIPTION = range(3)
 # db connection
 # add your user ids here, you can use @userinfobot to get your user id
 # DO NOT REMOVE EXISTING IDs
-dev_ids = [92129627, 987654321, 950641524]
 chanell_id = os.getenv("chanell_id")
 
 
@@ -129,7 +128,7 @@ if __name__ == "__main__":
             states={
                 CATEGORY: [
                     MessageHandler(
-                        filters.TEXT & ~filters.COMMAND, choice_category_message_handler
+                        filters.Regex("^(ماشین|موتور)$"), choice_category_message_handler
                     )
                 ],
                 PHOTO: [
