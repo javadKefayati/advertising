@@ -11,6 +11,7 @@ from telegram.ext import (
     CommandHandler,
     CallbackQueryHandler
 )
+from db import adv_db
 
 PHOTO_MOTOR, BRAND_MOTOR, MODEL_MOTOR, COLOR_MOTOR, FUNCTION_MOTOR, INSURANCE_MOTOR ,EXCHANGE_MOTOR = range(7)
 # chanell_id = os.getenv("chanell_id")
@@ -106,14 +107,22 @@ async def insurance_message_handler(
 async def choice_exchange_message_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
+    adv = adv_db()
     query = update.callback_query
     await query.answer()
 
     # write your code here
     context.user_data["exchange"] = query.data
     await query.edit_message_text(text=f"{query.data}")
+    adv_id = adv.insert_new_adver(
+        user_id=update.effective_user.id,
+        username=update.effective_user.username,
+        first_name=update.effective_user.first_name,
+        last_name=update.effective_user.last_name
+        )
 
-    description = f"نوع : \nموتور \n\n"\
+    description = f"آگهی شماره : {adv_id}\n\n\n"\
+        f"نوع : \nموتور \n\n"\
         f"برند: {context.user_data['brand']}\n\n"\
         f"مدل: {context.user_data['model']}\n\n"\
         f"کارکرد: {context.user_data['function']}\n\n"\

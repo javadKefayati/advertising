@@ -64,7 +64,3 @@ class adv_db:
         finally:
             if con:
                 con.close()
-# Pass user_id as a number (not a string)
-d = adv_db()
-# print(d.insert_new_adver(12345, 'ali123', 'ali', 'bighami'))
-print(d.get_user_info(1)['user_id'])

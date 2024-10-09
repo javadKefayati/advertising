@@ -15,6 +15,7 @@ from telegram.ext import (
 PHOTO_CAR, BRAND_CAR, MODEL_CAR, COLOR_CAR, FUNCTION_CAR, INSURANCE_CAR ,EXCHANGE_CAR, BODY_CAR, CHASSIS_CAR, TECHNICAL_CAR, MOTOR_CAR, GEARBOX_CAR, MONEY_CAR = range(13)
 # chanell_id = os.getenv("chanell_id")
 
+from db import adv_db
 
 async def motor_init_message_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -230,8 +231,16 @@ async def gearbox_message_handler(
 async def money_message_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
     ):
+    adv = adv_db()
+    adv_id = adv.insert_new_adver(
+        user_id=update.effective_user.id,
+        username=update.effective_user.username,
+        first_name=update.effective_user.first_name,
+        last_name=update.effective_user.last_name
+        )
     context.user_data["money"] = update.effective_message.text
-    description = f"نوع : \nموتور \n\n"\
+    description = f"آگهی شماره : {adv_id}\n\n\n"\
+        f"نوع : \nموتور \n\n"\
         f"برند: {context.user_data['brand']}\n\n"\
         f"مدل: {context.user_data['model']}\n\n"\
         f"کارکرد: {context.user_data['function']}\n\n"\
