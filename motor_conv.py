@@ -1,6 +1,6 @@
 
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update, InlineKeyboardButton,InlineKeyboardMarkup
-
+import os
 from telegram.ext import (
     ApplicationBuilder,
     ContextTypes,
@@ -14,7 +14,7 @@ from telegram.ext import (
 from db import adv_db
 
 PHOTO_MOTOR, BRAND_MOTOR, MODEL_MOTOR, COLOR_MOTOR, FUNCTION_MOTOR, INSURANCE_MOTOR ,EXCHANGE_MOTOR = range(7)
-# chanell_id = os.getenv("chanell_id")
+CHANELL_ID = os.getenv("CHANELL_ID")
 
 
 async def motor_init_message_handler(
@@ -24,7 +24,7 @@ async def motor_init_message_handler(
     """Starts the conversation and asks the user about their category."""
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="لطفا تصویر آگهی خود را بارگزاری کنید",
+        text="لطفا تصویر آگهی خود را بارگذاری کنید",
         reply_to_message_id=update.effective_message.id,
         reply_markup=ReplyKeyboardRemove(),
 
@@ -85,7 +85,7 @@ async def function_message_handler(
     context.user_data["function"] = update.effective_message.text
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="لطفا تعداد سال بیمه را تایپ کنید(مثال ۲ ماه)",
+        text="لطفا تعداد ماه بیمه را تایپ کنید(مثال ۲ ماه)",
         reply_to_message_id=update.effective_message.id,
     )
     return INSURANCE_MOTOR
@@ -132,22 +132,17 @@ async def choice_exchange_message_handler(
         f"آدرس پشتیبان: posht@df\n\n"
 
     await context.bot.send_photo(
-        chat_id=update.effective_chat.id,
+        chat_id=CHANELL_ID,
         caption= description,
         photo=context.user_data["photo_url"],
         reply_to_message_id=update.effective_message.id,
     )    
-    # await context.bot.send_photo(
-    #             chat_id= chanell_id,
-    #             photo=context.user_data["photo_url"],
-    #             caption= description,
-    #             )
 
-    # await context.bot.send_message(
-    #     chat_id=update.effective_chat.id,
-    #     text="آگهی شما با موفقیت ثبت شد.",
-    #     reply_to_message_id=update.effective_message.id,
-    # )
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="آگهی شما با موفقیت ثبت شد.",
+        reply_to_message_id=update.effective_message.id,
+    )
     return  ConversationHandler.END   
 
 

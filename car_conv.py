@@ -1,8 +1,7 @@
 
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update, InlineKeyboardButton,InlineKeyboardMarkup
-
+import os
 from telegram.ext import (
-    ApplicationBuilder,
     ContextTypes,
     CommandHandler,
     ConversationHandler,
@@ -13,7 +12,7 @@ from telegram.ext import (
 )
 
 PHOTO_CAR, BRAND_CAR, MODEL_CAR, COLOR_CAR, FUNCTION_CAR, INSURANCE_CAR ,EXCHANGE_CAR, BODY_CAR, CHASSIS_CAR, TECHNICAL_CAR, MOTOR_CAR, GEARBOX_CAR, MONEY_CAR = range(13)
-# chanell_id = os.getenv("chanell_id")
+CHANELL_ID = os.getenv("CHANELL_ID")
 
 from db import adv_db
 
@@ -24,7 +23,7 @@ async def motor_init_message_handler(
     """Starts the conversation and asks the user about their category."""
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="لطفا تصویر آگهی خود را بارگزاری کنید",
+        text="لطفا تصویر آگهی خود را بارگذاری کنید",
         reply_to_message_id=update.effective_message.id,
         reply_markup=ReplyKeyboardRemove(),
 
@@ -85,7 +84,7 @@ async def function_message_handler(
     context.user_data["function"] = update.effective_message.text
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="لطفا تعداد سال بیمه را تایپ کنید(مثال ۲ ماه)",
+        text="لطفا تعداد ماه بیمه را تایپ کنید(مثال ۲ ماه)",
         reply_to_message_id=update.effective_message.id,
     )
     return INSURANCE_CAR 
@@ -256,9 +255,14 @@ async def money_message_handler(
         f"آدرس پشتیبان: posht@df\n\n"
 
     await context.bot.send_photo(
-        chat_id=update.effective_chat.id,
+        chat_id=CHANELL_ID,
         caption= description,
         photo=context.user_data["photo_url"],
+        reply_to_message_id=update.effective_message.id,
+    )
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="آگهی شما با موفقیت ثبت شد.",
         reply_to_message_id=update.effective_message.id,
     )
     return  ConversationHandler.END   
