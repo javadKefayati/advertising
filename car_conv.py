@@ -1,6 +1,7 @@
 
-from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update, InlineKeyboardButton,InlineKeyboardMarkup
+from telegram import ReplyKeyboardRemove, Update, InlineKeyboardButton,InlineKeyboardMarkup
 import os
+from dotenv import load_dotenv
 from telegram.ext import (
     ContextTypes,
     CommandHandler,
@@ -10,6 +11,8 @@ from telegram.ext import (
     CommandHandler,
     CallbackQueryHandler
 )
+
+load_dotenv()  # take environment variables from .env.
 
 PHOTO_CAR, BRAND_CAR, MODEL_CAR, COLOR_CAR, FUNCTION_CAR, INSURANCE_CAR ,EXCHANGE_CAR, BODY_CAR, CHASSIS_CAR, TECHNICAL_CAR, MOTOR_CAR, GEARBOX_CAR, MONEY_CAR = range(13)
 CHANELL_ID = os.getenv("CHANELL_ID")

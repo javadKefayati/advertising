@@ -11,7 +11,11 @@ from telegram.ext import (
     CommandHandler,
     CallbackQueryHandler
 )
+from dotenv import load_dotenv
+
 from db import adv_db
+
+load_dotenv()  # take environment variables from .env.
 
 PHOTO_MOTOR, BRAND_MOTOR, MODEL_MOTOR, COLOR_MOTOR, FUNCTION_MOTOR, INSURANCE_MOTOR ,EXCHANGE_MOTOR = range(7)
 CHANELL_ID = os.getenv("CHANELL_ID")
@@ -130,18 +134,16 @@ async def choice_exchange_message_handler(
         f"معاوضه: {context.user_data['exchange']}\n\n\n\n"\
         f"آدرس کانال: kanal@\n\n"\
         f"آدرس پشتیبان: posht@df\n\n"
-
+    print(CHANELL_ID)
     await context.bot.send_photo(
         chat_id=CHANELL_ID,
         caption= description,
         photo=context.user_data["photo_url"],
-        reply_to_message_id=update.effective_message.id,
     )    
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="آگهی شما با موفقیت ثبت شد.",
-        reply_to_message_id=update.effective_message.id,
     )
     return  ConversationHandler.END   
 
