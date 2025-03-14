@@ -165,12 +165,12 @@ async def money_message_handler(
         f"🛵 نوع: موتور\n"\
         f"🏷 برند: {context.user_data['brand']}\n"\
         f"📅 مدل: {context.user_data['model']}\n"\
-        f"🔄 کارکرد: {context.user_data['function']} کیلومتر\n"\
-        f"🛡 بیمه: {context.user_data['insurance']}\n"\
+        f"🔄 کارکرد: {context.user_data['function']} هزار کیلومتر\n"\
+        f"🛡 بیمه: {context.user_data['insurance']} ماه\n"\
         f"🔄 معاوضه: {context.user_data['exchange']}\n"\
-        f"💰 قیمت: {context.user_data['money']} تومان\n\n"\
+        f"💰 قیمت: {context.user_data['money']}  ملیون تومان\n\n"\
         f"📢 برای اطلاعات بیشتر:\n"\
-        f"📌 آدرس کانال: @kanal\n"\
+        f"📌 آدرس کانال: {CHANELL_ID}\n"\
 
 
     adv = AdvDB()
