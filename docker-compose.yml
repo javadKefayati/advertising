@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: ./etc/docker_files/Dockerfile 
+    container_name: telegram-bot
+    restart: always
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+    depends_on:
+      - postgres
+    networks:
+      - bot-network
+
+  postgres:
+    image: postgres:13
+    container_name: postgres
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./etc/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
+      - ./etc/postgres/postgres_init.sh:/postgres_init.sh
+    entrypoint: ["bash", "/postgres_init.sh"]
+    ports:
+      - 54322:5432
+    networks:
+      - bot-network
+
+networks:
+  bot-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
