@@ -12,6 +12,7 @@ RUN pip install poetry && poetry install --no-root
 
 # Set environment variables (if needed)
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH="${PYTHONPATH}:/app/src"
 
 # Run the bot
 CMD ["poetry", "run", "python", "src/bot.py"]
