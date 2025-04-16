@@ -320,6 +320,8 @@ def get_user_handlers():
 
             ],
             allow_reentry=True,
+            per_message=True
+
         ),
         # change first name and last_name of user
         ConversationHandler(
