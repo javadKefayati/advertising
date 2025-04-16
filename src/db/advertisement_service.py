@@ -1,6 +1,7 @@
 import os
 from typing import Optional, List, Union
 from db.base import SessionLocal, engine, Base
+from contextlib import contextmanager
 from .models import (
     Advertisement,
     AdvertisementPhoto,
@@ -14,7 +15,9 @@ from sqlalchemy.sql import exists
 
 
 # Create the tables (only once)
-Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(
+    bind=engine
+)
 
 
 class AdvertisementDb:
@@ -25,10 +28,9 @@ class AdvertisementDb:
         self,
         user_id: str,
         vehicle_type: str,
-        advertisement_type: str,
-        brand: str,
-        model: str,
-        # Required fields above, optional fields below
+        advertisement_type: Optional[str] = None,
+        brand: Optional[str] = None,
+        model: Optional[str] = None,
         color: Optional[str] = None,
         function: Optional[int] = None,
         insurance: Optional[bool] = None,
@@ -39,7 +41,8 @@ class AdvertisementDb:
         technical: Optional[int] = None,
         gearbox: Optional[str] = None,
         money: Optional[str] = None,
-        photos: Optional[List[str]] = None
+        photos: Optional[List[str]] = None,
+        default_photo: Optional[str] = None,
     ) -> Advertisement:
 
         new_ad = Advertisement(
@@ -59,60 +62,85 @@ class AdvertisementDb:
             gearbox=gearbox,
             money=money
         )
+        try:
+            self.session.add(new_ad)
+            self.session.flush()  # Get the ID before commit
 
-        self.session.add(new_ad)
-        self.session.flush()  # Get the ID before commit
-
-        # Handle photos
-        if not os.path.exists('ads_photos'):
-            os.makedirs('ads_photos')
-
-        if photos:
+            # Handle photos
+            if not os.path.exists('ads_photos'):
+                os.makedirs('ads_photos')
             new_photos_info = []
-            for photo in photos:
-                # Get the highest quality photo
-                file = await photo.get_file()
-                file_path = f"ads_photos/{new_ad.adv_id}_{file.file_id}.jpg"
 
-                # Save photo to disk
-                await file.download_to_drive(file_path)
+            if photos:
+                for photo in photos:
+                    # Get the highest quality photo
+                    file = await photo.get_file()
+                    file_path = f"ads_photos/{new_ad.adv_id}_{file.file_id}.jpg"
 
-                # Create photo record
-                new_photos_info.append(AdvertisementPhoto(
-                    photo_path=file_path,
-                    advertisement_id=new_ad.adv_id
-                ))
+                    # Save photo to disk
+                    await file.download_to_drive(file_path)
 
-            self.session.add_all(new_photos_info)
+                    # Create photo record
+                    new_photos_info.append(AdvertisementPhoto(
+                        photo_path=file_path,
+                        advertisement_id=new_ad.adv_id
+                    ))
 
-        self.session.commit()
-        return new_ad
+                self.session.add_all(new_photos_info)
+            else:
+                if default_photo:
+                    new_photo_info= AdvertisementPhoto(
+                        photo_path=default_photo,
+                        advertisement_id=new_ad.adv_id
+                    )
+                    self.session.add(new_photo_info)
+
+            self.session.commit()
+            return new_ad
+        except BaseException:
+            self.session.rollback()
+            return False
+
 
     def get_advertisement_with_photos(self, adv_id: int):
+        try:
+            advertisement = self.session.query(Advertisement).options(
+                joinedload(Advertisement.photos)
+            ).filter(Advertisement.adv_id == adv_id).first()
+            return advertisement
+        except BaseException:
+            self.session.rollback()
 
-        advertisement = self.session.query(Advertisement).options(
-            joinedload(Advertisement.photos)
-        ).filter(Advertisement.adv_id == adv_id).first()
-
-        return advertisement
 
     def get_all_advertisements_with_photos_by_user(
             self, user_id: int) -> List[Advertisement]:
-        return (
-            self.session.query(Advertisement)
-            .options(joinedload(Advertisement.photos))
-            .filter(Advertisement.user_id == user_id)
-            .all()
-        )
+        try:
+            return (
+                self.session.query(Advertisement)
+                .options(joinedload(Advertisement.photos))
+                .filter(Advertisement.user_id == user_id)
+                .all()
+            )
+        except BaseException:
+            self.session.rollback()
+            return False
 
     def check_exist_user(self, user_id: int) -> bool:
-        return self.session.query(
-            exists().where(
-                User.user_id == user_id)).scalar()
+        try:
+            return self.session.query(
+                exists().where(
+                    User.user_id == user_id)).scalar()
+        except BaseException:
+            self.session.rollback()
+            return False
 
     def get_user_by_id(self, user_id: int):
         """جستجو کاربر بر اساس user_id"""
-        return self.session.query(User).filter(User.user_id == user_id).first()
+        try:
+            return self.session.query(User).filter(User.user_id == user_id).first()
+        except BaseException:
+            self.session.rollback()
+            return False
 
     def insert_new_user(self,
                         user_id: int,
@@ -153,28 +181,36 @@ class AdvertisementDb:
 
     def get_user_info(self, user_id: int) -> Optional[dict]:
         """Get user information by user_id."""
-        user = self.session.query(User).filter(User.user_id == user_id).first()
-        if user:
-            return {
-                "user_id": user.user_id,
-                "username": user.username,
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-                "phone_number": user.phone_number
-            }
-        return None
+        try:
+            user = self.session.query(User).filter(User.user_id == user_id).first()
+            if user:
+                return {
+                    "user_id": user.user_id,
+                    "username": user.username,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "phone_number": user.phone_number
+                }
+            return None
+        except BaseException:
+            self.session.rollback()
+            return False
 
     def get_adv_info(self, adv_id: int) -> Optional[dict]:
         """Get advertisement information by adv_id."""
-        advertisement = self.session.query(Advertisement).filter(
-            Advertisement.adv_id == adv_id).first()
-        if advertisement:
-            return {
-                "adv_id": advertisement.adv_id,
-                "user_id": advertisement.user_id,
-                "inserted_at": advertisement.inserted_at.isoformat()
-            }
-        return None
+        try:
+            advertisement = self.session.query(Advertisement).filter(
+                Advertisement.adv_id == adv_id).first()
+            if advertisement:
+                return {
+                    "adv_id": advertisement.adv_id,
+                    "user_id": advertisement.user_id,
+                    "inserted_at": advertisement.inserted_at.isoformat()
+                }
+            return None
+        except BaseException:
+            self.session.rollback()
+            return False
 
     def check_user_is_admin(self, user_id: int) -> bool:
         try:

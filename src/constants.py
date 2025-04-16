@@ -10,13 +10,15 @@ POSTGRES_PASSWORD: Final = os.getenv("POSTGRES_PASSWORD", "")
 POSTGRES_HOST: Final = os.getenv("POSTGRES_HOST", "")
 POSTGRES_PORT: Final = os.getenv("POSTGRES_PORT", "")
 CHANELL_USERNAME: Final = os.getenv("CHANELL_USERNAME", "")
-SUPPORT_USERNAME: Final = os.getenv("SUPPORT_USERNAME", "")
+SUPPORT_USERNAMES: Final = [u.strip() for u in os.getenv("SUPPORT_USERNAMES", "").split(",") if u.strip()]
+SUPPORT_USERNAME_DEVELOPER:Final = os.getenv("SUPPORT_USERNAME_DEVELOPER", "")
 BOT_TOKEN: Final = os.getenv("TOKEN", "")
 
 MY_ADVERTISMENT_LIST_TEXT_BUTTON: Final = 'لیست آگهی های من'
 HELP_TEXT_BUTTON: Final = 'راهنما'
 RETURN_MESSAGE_BUTTON: Final = '🔙 بازگشت'
 SUBMIT_NEW_USER_BUTTON: Final = 'ایجاد حساب کاربری'
+DEFAULT_PICT_PATH:Final = os.getenv("DEFAULT_PICT_PATH", "")
 
 NOT_FOUND_ANY_ADVERTISEMENT_TEXT: Final = 'شما هنوز آگهی ثبت نکرده اید'
 UNREGISTERED_USER_TEXT: Final = "شما هنوز ثبت نام نکرده اید، لطفا اول ثبت نام کنید."
@@ -57,9 +59,9 @@ HELP_TEXT: Final = """
 {CHANELL_USERNAME}
 
 🛟 پشتیبانی:
-در صورت مشکل به آی دی {SUPPORT_USERNAME} پیام دهید
+در صورت مشکل به آی دی {SUPPORT_USERNAME_DEVELOPER} پیام دهید
 \u202C
 """.format(
     CHANELL_USERNAME=CHANELL_USERNAME,
-    SUPPORT_USERNAME=SUPPORT_USERNAME
+    SUPPORT_USERNAME_DEVELOPER=SUPPORT_USERNAME_DEVELOPER
 )

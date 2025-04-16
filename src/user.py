@@ -319,7 +319,8 @@ def get_user_handlers():
                 )
 
             ],
-            allow_reentry=True,
+            allow_reentry=True
+
         ),
         # change first name and last_name of user
         ConversationHandler(
