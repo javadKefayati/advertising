@@ -17,10 +17,11 @@ from constants import (
 from keyboards import (
     USER_KEYBOARD,
     BACK_KEYBOARD,
-    CHANGE_USER_INFO_KEYBOARD
+    CHANGE_USER_INFO_KEYBOARD,
+    VEHICLE_KEYBOARD
 )
 
-FIRST_NAME, LAST_NAME, PHONE_NUMBER = range(3)
+FIRST_NAME, LAST_NAME, PHONE_NUMBER, USERNAME = range(4)
 CHANGE_FIRST_NAME, CHANGE_LAST_NAME = range(2)
 CHANGE_PHONE_NUMBER = range(1)
 
@@ -55,7 +56,7 @@ async def show_user_info_handler(
         user_info = f"""
         🧾 اطلاعات حساب کاربری شما:
 
-        👤 نام کاربری: {user.username}
+        👤 نام کاربری: {user.submit_username}
         🪪 نام و نام‌خانوادگی: {user.first_name} {user.last_name}
         📱 شماره تلفن: {formatted_phone}
         🗓 تاریخ عضویت: {user.inserted_at.strftime('%Y/%m/%d')}
@@ -128,17 +129,39 @@ async def phone_number_conv_handler(
         update: Update,
         context: ContextTypes.DEFAULT_TYPE):
     contact = update.message.contact
+    context.user_data["phone_number"] = contact.phone_number
+
+    await update.message.reply_text(
+        text=(
+            "تلفن همراه شما با موفقیت ثبت شد ✅\n\n"
+            "حالا لطفاً نام کاربری تلگرام خود را وارد کنید.\n\n"
+            "🔹 فقط خود نام کاربری را بدون '@' بنویسید (مثلاً فقط: yourusername).\n"
+            "🔹 اگر نام کاربری نداشته باشید یا اشتباه وارد کنید، ادمین‌ها نمی‌توانند با شما تماس بگیرند.\n\n"
+            "➡️ لطفاً دقت کنید و نام کاربری صحیح را همینجا بدون @ بفرستید."
+        )
+        )
+    return USERNAME
+
+async def username_conv_handler(
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE):
+    contact = update.message.contact
     context.user_data["last_menu"] = "home_menu"
+    submit_username = update.effective_message.text
+    print(submit_username)
+    username = getattr(update.effective_user, "username", " ")
+
     db.insert_new_user(
         user_id=update.effective_user.id,
         first_name=context.user_data["first_name"],
         last_name=context.user_data["last_name"],
-        username=update.effective_user.username,
-        phone_number=contact.phone_number
+        username=username,
+        submit_username=submit_username,
+        phone_number=context.user_data["phone_number"]
     )
     await update.message.reply_text(
         "اطلاعات شما با موفقیت ثبت شد",
-        reply_markup=USER_KEYBOARD
+        reply_markup=VEHICLE_KEYBOARD
     )
     return ConversationHandler.END
 # endregion
@@ -236,9 +259,11 @@ async def change_username_handler(
         update: Update,
         context: ContextTypes.DEFAULT_TYPE):
     context.user_data["last_menu"] = "home_menu"
+    username = getattr(update.effective_user, "username", " ")
+
     db.update_user_info(
         user_id=update.effective_user.id,
-        username=update.effective_user.username
+        username=username
     )
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
@@ -310,6 +335,11 @@ def get_user_handlers():
                 PHONE_NUMBER: [
                     MessageHandler(
                         (~RETURN_FILTER) & filters.CONTACT, phone_number_conv_handler
+                    )
+                ],
+                USERNAME: [
+                    MessageHandler(
+                        (~RETURN_FILTER & filters.TEXT & ~filters.COMMAND), username_conv_handler
                     )
                 ]
             },

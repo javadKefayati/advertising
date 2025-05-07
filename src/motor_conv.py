@@ -71,6 +71,10 @@ class Motor(Vehicle):
                     "NEXT_STATE_RETURN_VALUE": self.Step.COLOR.value
                 },
                 "color_message_handler":{
+                    "NEXT_STATE_MESSAGE_FUNC": self.send_more_detail_pre_state_message,
+                    "NEXT_STATE_RETURN_VALUE": self.Step.MORE_DETAIL.value
+                },
+                "more_detail_message_handler":{
                     "NEXT_STATE_MESSAGE_FUNC": self.send_money_pre_state_message,
                     "NEXT_STATE_RETURN_VALUE": self.Step.MONEY.value
                 },
@@ -128,7 +132,8 @@ class Motor(Vehicle):
                 "advertisement_type": advertisement_type,
                 "brand": context.user_data["brand"],
                 "color": context.user_data["color"],
-                "money": context.user_data["money"]
+                "money": context.user_data["money"],
+                "more_detail": context.user_data["more_detail"],
                 }
         return await self.handle_approval_common(
             update=update,
@@ -168,6 +173,9 @@ class Motor(Vehicle):
                         self.Step.EXCHANGE.value: [
                             self.exchange_state_handler()
                         ],
+                        self.Step.MORE_DETAIL.value: [
+                            self.more_detail_state_handler()
+                        ],
                         self.Step.MONEY.value: [
                             MessageHandler(
                                 filters.TEXT & ~filters.COMMAND & ~self.RETURN_FILTER, self.money_message_handler
@@ -182,5 +190,6 @@ class Motor(Vehicle):
                     fallbacks=[
                         self.cancel_state_handler()
                     ],
-                    allow_reentry=True                )
+                    allow_reentry=True
+                    )
                 ]

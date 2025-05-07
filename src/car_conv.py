@@ -101,6 +101,10 @@ class Car(Vehicle):
                     "NEXT_STATE_RETURN_VALUE": self.Step.MONEY.value
                 },
                 "money_message_handler":{
+                    "NEXT_STATE_MESSAGE_FUNC": self.send_more_detail_pre_state_message,
+                    "NEXT_STATE_RETURN_VALUE": self.Step.MORE_DETAIL.value
+                },
+                "more_detail_message_handler":{
                     "NEXT_STATE_MESSAGE_FUNC": self.send_gearbox_pre_state_message,
                     "NEXT_STATE_RETURN_VALUE": self.Step.GEARBOX.value,
                 },
@@ -136,7 +140,8 @@ class Car(Vehicle):
         context.user_data["body"] = query.data
         await query.edit_message_text(text=f"{query.data}")
 
-        next_step = await self.run_pre_state_message_func_and_get_next_state(       methode_name=inspect.currentframe().f_code.co_name,
+        next_step = await self.run_pre_state_message_func_and_get_next_state(
+            methode_name=inspect.currentframe().f_code.co_name,
             update=update,
             context=context,
             advertisement_type=context.user_data["advertisement_type"]
@@ -152,7 +157,8 @@ class Car(Vehicle):
         context.user_data["chassis"] = query.data
         await query.edit_message_text(text=f"{query.data}")
 
-        next_step = await self.run_pre_state_message_func_and_get_next_state(       methode_name=inspect.currentframe().f_code.co_name,
+        next_step = await self.run_pre_state_message_func_and_get_next_state(
+            methode_name=inspect.currentframe().f_code.co_name,
             update=update,
             context=context,
             advertisement_type=context.user_data["advertisement_type"]
@@ -168,7 +174,8 @@ class Car(Vehicle):
         context.user_data["technical"] = query.data
         await query.edit_message_text(text=f"{query.data}")
 
-        next_step = await self.run_pre_state_message_func_and_get_next_state(       methode_name=inspect.currentframe().f_code.co_name,
+        next_step = await self.run_pre_state_message_func_and_get_next_state(
+            methode_name=inspect.currentframe().f_code.co_name,
             update=update,
             context=context,
             advertisement_type=context.user_data["advertisement_type"]
@@ -185,7 +192,8 @@ class Car(Vehicle):
 
         await query.edit_message_text(text=f"{query.data}")
 
-        next_step = await self.run_pre_state_message_func_and_get_next_state(       methode_name=inspect.currentframe().f_code.co_name,
+        next_step = await self.run_pre_state_message_func_and_get_next_state(
+            methode_name=inspect.currentframe().f_code.co_name,
             update=update,
             context=context,
             advertisement_type=context.user_data["advertisement_type"]
@@ -201,7 +209,8 @@ class Car(Vehicle):
         context.user_data["gearbox"] = query.data
         await query.edit_message_text(text=f"{query.data}")
 
-        next_step = await self.run_pre_state_message_func_and_get_next_state(       methode_name=inspect.currentframe().f_code.co_name,
+        next_step = await self.run_pre_state_message_func_and_get_next_state(
+            methode_name=inspect.currentframe().f_code.co_name,
             update=update,
             context=context,
             advertisement_type=context.user_data["advertisement_type"]
@@ -245,7 +254,9 @@ class Car(Vehicle):
                 "brand": context.user_data["brand"],
                 "color": context.user_data["color"],
                 "money": context.user_data["money"],
-                "gearbox": context.user_data['gearbox']
+                "gearbox": context.user_data['gearbox'],
+                "more_detail": context.user_data["more_detail"],
+
                 }
         return await self.handle_approval_common(
             update=update,
@@ -404,6 +415,9 @@ class Car(Vehicle):
                             self.motor_message_handler
                         )
                     ],
+                    self.Step.MORE_DETAIL.value: [
+                            self.more_detail_state_handler()
+                        ],
                     self.Step.GEARBOX.value: [
                         CallbackQueryHandler(
                             self.gearbox_message_handler

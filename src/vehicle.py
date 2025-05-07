@@ -20,17 +20,24 @@ from telegram.ext import (
 )
 from constants import (
     RETURN_MESSAGE_BUTTON,
+    SKIP_MESSAGE_BUTTON,
     CHANELL_USERNAME,
     UNREGISTERED_USER_TEXT,
     SUPPORT_USERNAMES,
-    DEFAULT_PICT_PATH
+    DEFAULT_PICT_PATH,
+    BOT_USERNAME,
+    DEFAULT_MOTOR_PICT_PATH,
+    DEFAULT_CAR_PICT_PATH,
+    ADV_PICTURE_LIMIT,
+    SUPPORT_PHONE_NUMBERS
 )
 from keyboards import (
     VEHICLE_KEYBOARD,
     BACK_KEYBOARD,
     HOME_BOT_KEYBOARD,
     USER_KEYBOARD,
-    APPROVE_KEYBOARD
+    APPROVE_KEYBOARD,
+    BACK_SKIP_KEYBOARD
 )
 from db.advertisement_service import AdvertisementDb
 
@@ -65,11 +72,12 @@ class Vehicle(ABC):
         TECHNICAL = auto()
         MOTOR = auto()
         GEARBOX = auto()
+        MORE_DETAIL = auto()
         APPROVE = auto()
 
     def generate_advertisement_info_format(
         self,
-        bot_username: str,
+        bot_username: str = BOT_USERNAME,
         advertisement_id: Optional[int] = None,
         advertisement_type: Optional[str] = None,
         vehicle_type: Optional[str] = None,
@@ -85,23 +93,28 @@ class Vehicle(ABC):
             'Car': '🚗 نوع: ماشین',
             'Motor': '🛵 نوع: موتور'
         }
-
+        
         field_templates: List[Tuple[str, str]] = [
-            ('brand', '🏷  برند:  {}'),
+            ('brand', '💎  برند:  {}'),
             ('model', '📅  مدل:  {}'),
-            ('function', '🔄  کارکرد:  {} هزار کیلومتر'),
-            ('insurance', '🛡  بیمه:  {} ماه'),
+            ('function', '⏲️  کارکرد:  {} هزار کیلومتر'),
+            ('insurance', '🛐  بیمه:  {} ماه'),
             ('exchange', '🔄  معاوضه:  {}'),
-            ('money', '💰  قیمت:  {}'),
+            ('money', '💵  قیمت:  {}'),
             ('body', '🚗  وضعیت بدنه:  {}'),
-            ('chassis', '🛠  وضعیت شاسی:  {}'),
-            ('motor', '⚙  وضعیت موتور:  {}'),
+            ('chassis', '🗜️  وضعیت شاسی:  {}'),
+            ('motor', '⚠️  وضعیت موتور:  {}'),
             ('technical', '✅  معاینه فنی:  {}'),
-            ('gearbox', '⚡  نوع گیربکس:  {}'),
+            ('gearbox', '⚙️  نوع گیربکس:  {}'),
             ('color', '🎨  رنگ:  {}'),
+            ('more_detail', '📝 توضیحات تکمیلی: {}')
+
         ]
 
         description_parts = []
+
+        if kwargs.get('more_detail') == ' ':
+            del kwargs['more_detail']
 
         # Add advertisement type
         if advertisement_type and advertisement_type in type_labels:
@@ -117,9 +130,12 @@ class Vehicle(ABC):
             if key == 'color' and 'color' in kwargs:
                 if advertisement_type == 'shop':
                     template = "🎨  رنگ ترجیحی: {}"
-            elif key == 'money' and 'money' in kwargs:
+            if key == 'money' and 'money' in kwargs:
                 if advertisement_type == 'shop':
                     template = "💰  حداکثر قیمت:  {}"
+            elif key == 'brand' and 'brand' in kwargs:
+                if advertisement_type == 'shop':
+                    template = "💎  برند درخواستی:  {}"
             updated_templates.append((key, template))
 
         # Generate final lines
@@ -137,8 +153,13 @@ class Vehicle(ABC):
             description = "\n\n" + description
 
         if SUPPORT_USERNAMES:
-            description += "\n\n👤 برای خرید یا فروش به آی‌دی‌های زیر پیام بدهید:"
+            description += "\n\n📞 راه‌های ارتباطی برای خرید یا اطلاعات بیشتر:"
+            description += "\n• آی‌دی تلگرام:"
             description += '\n' + '\n'.join(f"@{username}" for username in SUPPORT_USERNAMES)
+
+        if SUPPORT_PHONE_NUMBERS:
+            description += "\n• شماره تماس:"
+            description += '\n' + '\n'.join(SUPPORT_PHONE_NUMBERS)
 
         description += f"\n\n\n📌 آدرس کانال: {CHANELL_USERNAME}"
         
@@ -213,7 +234,8 @@ class Vehicle(ABC):
         context.user_data["advertisement_type"] = self.check_sale_or_shop(
             text=update.message.text
         )
-        next_step = await self.run_pre_state_message_func_and_get_next_state(        methode_name=inspect.currentframe().f_code.co_name,
+        next_step = await self.run_pre_state_message_func_and_get_next_state(
+            methode_name=inspect.currentframe().f_code.co_name,
             update=update,
             context=context,
             advertisement_type=context.user_data["advertisement_type"]
@@ -224,6 +246,8 @@ class Vehicle(ABC):
             self,
             update: Update,
             context: ContextTypes.DEFAULT_TYPE) -> int:
+        context.user_data.setdefault("photos", [])
+
         if update.message.text == 'تمام':
             if not context.user_data.get("photos", False):
                 await context.bot.send_message(
@@ -233,7 +257,8 @@ class Vehicle(ABC):
                 )
                 return self.Step.PHOTO.value
 
-            next_step = await self.run_pre_state_message_func_and_get_next_state(                methode_name=inspect.currentframe().f_code.co_name,
+            next_step = await self.run_pre_state_message_func_and_get_next_state(
+                methode_name=inspect.currentframe().f_code.co_name,
                 update=update,
                 context=context,
                 advertisement_type=context.user_data["advertisement_type"]
@@ -242,9 +267,23 @@ class Vehicle(ABC):
             return next_step
 
         if update.message.photo:
-            context.user_data.setdefault("photos", [])
             photo_file_id = update.message.photo[-1]
             context.user_data["photos"].append(photo_file_id)
+
+            if len(context.user_data["photos"]) > ADV_PICTURE_LIMIT - 1:
+                await context.bot.send_message(
+                        chat_id=update.effective_chat.id,
+                        text=f"{ADV_PICTURE_LIMIT} عکس آگهی شما ثبت شده است و امکان ثبت عکس بیشتر وجود ندارد",
+                        reply_to_message_id=update.effective_message.id,
+                    )
+                next_step = await self.run_pre_state_message_func_and_get_next_state(
+                    methode_name=inspect.currentframe().f_code.co_name,
+                    update=update,
+                    context=context,
+                    advertisement_type=context.user_data["advertisement_type"]
+
+                )
+                return next_step
 
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
@@ -259,12 +298,63 @@ class Vehicle(ABC):
             context: ContextTypes.DEFAULT_TYPE) -> int:
         context.user_data["brand"] = update.effective_message.text
 
-        next_step = await self.run_pre_state_message_func_and_get_next_state(       methode_name=inspect.currentframe().f_code.co_name,
+        next_step = await self.run_pre_state_message_func_and_get_next_state(
+            methode_name=inspect.currentframe().f_code.co_name,
             update=update,
-            context=context, advertisement_type=context.user_data["advertisement_type"]
+            context=context,
+            advertisement_type=context.user_data["advertisement_type"]
         )
         return next_step
 
+
+    async def more_detail_message_handler(
+            self,
+            update: Update,
+            context: ContextTypes.DEFAULT_TYPE) -> int:
+        
+        # Get the text and check the word count
+        detail_text = update.effective_message.text.strip()
+        word_count = len(detail_text)
+        # If the word count is more than 30, inform the user
+        if word_count > 30:
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text="❌ لطفاً حداکثر ۳۰ کلمه وارد کنید."
+            )
+            return self.Step.MORE_DETAIL.value
+
+        # If the user enters "skip", store empty or skip details
+        if detail_text.lower() == SKIP_MESSAGE_BUTTON :
+            context.user_data["more_detail"] = ""
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text="توضیحات تکمیلی نادیده گرفته شد. ادامه می‌دهیم.",
+                reply_markup=BACK_KEYBOARD 
+                # Update reply_markup if necessary
+            )
+            next_step = await self.run_pre_state_message_func_and_get_next_state(
+                methode_name=inspect.currentframe().f_code.co_name,
+                update=update,
+                context=context,
+                advertisement_type=context.user_data["advertisement_type"]
+            )
+            return next_step
+
+        # Otherwise, store the detail and proceed
+        context.user_data["more_detail"] = detail_text
+
+        await context.bot.send_message(
+                        chat_id=update.effective_chat.id,
+                        text="توضیحات با موفیقت ثبت شد",
+                        reply_markup=BACK_KEYBOARD 
+        )
+        next_step = await self.run_pre_state_message_func_and_get_next_state(
+            methode_name=inspect.currentframe().f_code.co_name,
+            update=update,
+            context=context,
+            advertisement_type=context.user_data["advertisement_type"]
+        )
+        return next_step
 
     async def model_message_handler(
             self,
@@ -272,7 +362,8 @@ class Vehicle(ABC):
             context: ContextTypes.DEFAULT_TYPE) -> int:
         context.user_data["model"] = update.effective_message.text
 
-        next_step = await self.run_pre_state_message_func_and_get_next_state(       methode_name=inspect.currentframe().f_code.co_name,
+        next_step = await self.run_pre_state_message_func_and_get_next_state(
+            methode_name=inspect.currentframe().f_code.co_name,
             update=update,
             context=context,
             advertisement_type=context.user_data["advertisement_type"]
@@ -299,7 +390,8 @@ class Vehicle(ABC):
             update: Update,
             context: ContextTypes.DEFAULT_TYPE) -> int:
         context.user_data["function"] = update.effective_message.text
-        next_step = await self.run_pre_state_message_func_and_get_next_state(       methode_name=inspect.currentframe().f_code.co_name,
+        next_step = await self.run_pre_state_message_func_and_get_next_state(
+            methode_name=inspect.currentframe().f_code.co_name,
             update=update,
             context=context,
             advertisement_type=context.user_data["advertisement_type"]
@@ -311,7 +403,8 @@ class Vehicle(ABC):
             update: Update,
             context: ContextTypes.DEFAULT_TYPE) -> int:
         context.user_data["insurance"] = update.effective_message.text
-        next_step = await self.run_pre_state_message_func_and_get_next_state(       methode_name=inspect.currentframe().f_code.co_name,
+        next_step = await self.run_pre_state_message_func_and_get_next_state(
+            methode_name=inspect.currentframe().f_code.co_name,
             update=update,
             context=context,
             advertisement_type=context.user_data["advertisement_type"]
@@ -326,7 +419,8 @@ class Vehicle(ABC):
         # write your code here
         context.user_data["exchange"] = query.data
         await query.edit_message_text(text=f"{query.data}")
-        next_step = await self.run_pre_state_message_func_and_get_next_state(       methode_name=inspect.currentframe().f_code.co_name,
+        next_step = await self.run_pre_state_message_func_and_get_next_state(
+            methode_name=inspect.currentframe().f_code.co_name,
             update=update,
             context=context,
             advertisement_type=context.user_data["advertisement_type"]
@@ -341,8 +435,8 @@ class Vehicle(ABC):
             context: ContextTypes.DEFAULT_TYPE,
             user_id,
             adv_obj):
+
         description = self.generate_advertisement_info_format(
-            bot_username=context.bot.username,
             advertisement_id=adv_obj.adv_id,
             advertisement_type=adv_obj.advertisement_type,
             vehicle_type=adv_obj.vehicle_type,
@@ -356,7 +450,9 @@ class Vehicle(ABC):
             chassis=adv_obj.chassis,
             motor=adv_obj.motor,
             technical=adv_obj.technical,
-            gearbox=adv_obj.gearbox
+            gearbox=adv_obj.gearbox,
+            color=adv_obj.color,
+            more_detail=adv_obj.more_detail
         )
         # دریافت لیست عکس‌ها از مدل آگهی
         photos = [os.path.join(BASE_PATH, photo.photo_path)
@@ -424,7 +520,6 @@ class Vehicle(ABC):
                 **advertisement_fields)
 
             description = self.generate_advertisement_info_format(
-                bot_username=context.bot.username,
                 advertisement_id=new_adv.adv_id, **description_fields
             )
             default_photo = context.user_data.get('default_photo','')
@@ -443,13 +538,13 @@ class Vehicle(ABC):
                     InputMediaPhoto(photo, caption=description if i == 0 else None)
                     for i, photo in enumerate(advertisement_fields["photos"])
                 ]
-            await context.bot.send_media_group(
-                chat_id=CHANELL_USERNAME,
-                media=media_group,
-            )
+            # await context.bot.send_media_group(
+            #     chat_id=CHANELL_USERNAME,
+            #     media=media_group,
+            # )
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
-                text="اطلاعات با موفقیت ثبت و در کانال قرار گرفت.",
+                text="اطلاعات با موفقیت ثبت و بعد از تایید توسط ادمین‌ها ، در کانال قرار می‌گیرد.",
                 reply_to_message_id=update.effective_message.id,
                 reply_markup=HOME_BOT_KEYBOARD,
             )
@@ -520,7 +615,14 @@ class Vehicle(ABC):
         return MessageHandler(
             self.RETURN_FILTER, self.cancel_command_handler
         )
-    
+
+    def more_detail_state_handler(self):
+        return MessageHandler(
+            filters.TEXT & ~filters.COMMAND & ~self.RETURN_FILTER,
+            self.more_detail_message_handler
+            )
+
+
     async def send_photo_pre_state_message(
         self,
         update: Update,
@@ -541,7 +643,8 @@ class Vehicle(ABC):
             chat_id=update.effective_chat.id,
             text=(
                 "📌 در فرآیند ثبت آگهی، برای بازگشت یا پایان دادن می‌توانید از دکمه «بازگشت» استفاده کنید.\n\n"
-                "🖼 لطفاً تصاویر آگهی خود را بارگذاری کنید. پس از اتمام بارگذاری، دکمه «تمام» را فشار دهید."
+                "🖼 لطفاً تصاویر آگهی خود را بارگذاری کنید. پس از اتمام بارگذاری، دکمه «تمام» را فشار دهید.\n\n"
+                f"⚠️ حداکثر می‌توانید {ADV_PICTURE_LIMIT} عکس بارگذاری کنید."
             ),
             reply_to_message_id=update.effective_message.id,
             reply_markup=reply_markup,
@@ -552,10 +655,16 @@ class Vehicle(ABC):
         update: Update,
         context: ContextTypes.DEFAULT_TYPE
         ):
+        advertisement_type = context.user_data.get("advertisement_type")
+        if advertisement_type == 'sale':
+            brand_text = 'برند'
+        if advertisement_type == 'shop':
+            brand_text = 'برند درخواستی'
+
         if self.vehicle_type == 'Car':
-            text = "لطفا برند ماشین خود را وارد کنید(برای مثال پراید)"
+            text = f"لطفا {brand_text} ماشین خود را وارد کنید(برای مثال هیوندای سوناتا)"
         if self.vehicle_type == 'Motor':
-            text = "لطفا برند موتور خود را وارد کنید(برای مثال هوندا)"
+            text = f"لطفا {brand_text} موتور خود را وارد کنید(برای مثال هوندا)"
 
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
@@ -622,6 +731,18 @@ class Vehicle(ABC):
             reply_to_message_id=update.effective_message.id,
         )
 
+    async def send_more_detail_pre_state_message(
+        self,
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE
+        ):
+       await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="اگر توضیحات تکمیلی دارید، لطفاً وارد کنید. در غیر این صورت، برای ادامه دکمه ‘ادامه’ را انتخاب کنید (حداکثر ۳۰ حرف).",
+            reply_to_message_id=update.effective_message.id,
+            reply_markup=BACK_SKIP_KEYBOARD
+    )
+
 
     async def send_exchange_pre_state_message(
         self,
@@ -677,7 +798,7 @@ class Vehicle(ABC):
                 "insurance","exchange","money",
                 "body","chassis","motor",
                 "technical", "gearbox",
-                "color"
+                "color", "more_detail"
         ]
 
         infos = {
@@ -701,12 +822,17 @@ class Vehicle(ABC):
         )
         photos = context.user_data.get("photos")
         if not photos:
-            default_photo_path = os.path.join(BASE_PATH, DEFAULT_PICT_PATH)
+            default_photo_path = ''
+            
+            if self.vehicle_type == 'Car':
+                default_photo_path = os.path.join(BASE_PATH, DEFAULT_CAR_PICT_PATH)
+            else:
+                default_photo_path = os.path.join(BASE_PATH, DEFAULT_MOTOR_PICT_PATH)
+    
             if os.path.exists(default_photo_path):
                 context.user_data['default_photo'] = default_photo_path
 
         description = self.generate_advertisement_info_format(
-            bot_username=context.bot.username,
             **infos
         )
         media_group = []
@@ -740,6 +866,6 @@ class Vehicle(ABC):
     def get_handlers(self):
         return [
             MessageHandler(
-                filters.Regex(r"^ثبت تبلیغ جدید$"),
+                filters.Regex(r"^ثبت آگهی جدید$"),
                 self.start_init_vehicle_menue),
         ]
