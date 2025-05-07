@@ -1,17 +1,24 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, TIMESTAMP
+from enum import IntEnum
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, TIMESTAMP, BigInteger
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .base import Base
+
+class AdminApprovalStatus(IntEnum):
+    PENDING = 0
+    APPROVED = 1
+    REJECTED = -1
 
 
 class User(Base):
     __tablename__ = 'users'
 
-    user_id = Column(Integer, primary_key=True, autoincrement=True)
-    username = Column(String(255), unique=True, nullable=False)
+    user_id = Column(BigInteger, primary_key=True, autoincrement=True)
+    username = Column(String, nullable=True, unique=False)
+    submit_username = Column(String(255), nullable=True)
     first_name = Column(String(50))
     last_name = Column(String(50))
-    is_admin = Column(Boolean, default=False)
+    is_admin = Column(Boolean, default=False)   
     phone_number = Column(String(20))
     inserted_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     advertisements = relationship("Advertisement", back_populates="user")
@@ -22,7 +29,6 @@ class Advertisement(Base):
 
     adv_id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey('users.user_id'), nullable=False)
-
     vehicle_type = Column(String(100), nullable=False)
     advertisement_type = Column(String(100), nullable=False)
     brand = Column(String(100))
@@ -36,8 +42,10 @@ class Advertisement(Base):
     chassis = Column(String(50))
     technical = Column(String(50))
     gearbox = Column(String(50))
+    admin_approved_status = Column(Integer, default=AdminApprovalStatus.PENDING)
     money = Column(String(50))
     inserted_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    more_detail = Column(String(50), default=" ", nullable=True)
 
     user = relationship("User", back_populates="advertisements")
     photos = relationship(

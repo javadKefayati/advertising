@@ -43,6 +43,7 @@ class AdvertisementDb:
         money: Optional[str] = None,
         photos: Optional[List[str]] = None,
         default_photo: Optional[str] = None,
+        more_detail: Optional[str] = None,
     ) -> Advertisement:
 
         new_ad = Advertisement(
@@ -60,7 +61,8 @@ class AdvertisementDb:
             chassis=chassis,
             technical=technical,
             gearbox=gearbox,
-            money=money
+            money=money,
+            more_detail=more_detail
         )
         try:
             self.session.add(new_ad)
@@ -97,10 +99,10 @@ class AdvertisementDb:
 
             self.session.commit()
             return new_ad
-        except BaseException:
+        except BaseException as e:
+            print(e)
             self.session.rollback()
-            return False
-
+            raise False
 
     def get_advertisement_with_photos(self, adv_id: int):
         try:
@@ -108,46 +110,53 @@ class AdvertisementDb:
                 joinedload(Advertisement.photos)
             ).filter(Advertisement.adv_id == adv_id).first()
             return advertisement
-        except BaseException:
+        except BaseException as e:
+            print(e)
             self.session.rollback()
+            raise False
 
 
-    def get_all_advertisements_with_photos_by_user(
-            self, user_id: int) -> List[Advertisement]:
+    def get_advertisements_with_photos(self, **filters):
         try:
-            return (
-                self.session.query(Advertisement)
-                .options(joinedload(Advertisement.photos))
-                .filter(Advertisement.user_id == user_id)
-                .all()
-            )
-        except BaseException:
+            query = self.session.query(Advertisement).options(joinedload(Advertisement.photos))
+
+            for attr, value in filters.items():
+                if hasattr(Advertisement, attr):
+                    query = query.filter(getattr(Advertisement, attr) == value)
+
+            return query.all()
+
+        except BaseException as e:
+            print(e)
             self.session.rollback()
-            return False
+            raise False
 
     def check_exist_user(self, user_id: int) -> bool:
         try:
             return self.session.query(
                 exists().where(
                     User.user_id == user_id)).scalar()
-        except BaseException:
+        except BaseException as e:
+            print(e)
             self.session.rollback()
-            return False
+            raise False
 
     def get_user_by_id(self, user_id: int):
         """جستجو کاربر بر اساس user_id"""
         try:
             return self.session.query(User).filter(User.user_id == user_id).first()
-        except BaseException:
+        except BaseException as e:
+            print(e)
             self.session.rollback()
-            return False
+            raise False
 
     def insert_new_user(self,
                         user_id: int,
                         username: str,
                         first_name: Optional[str],
                         last_name: Optional[str],
-                        phone_number: Optional[str]
+                        phone_number: Optional[str],
+                        submit_username: Optional[str]
                         ) -> bool:
         """Insert new user into database"""
         try:
@@ -156,14 +165,16 @@ class AdvertisementDb:
                 username=username,
                 first_name=first_name,
                 last_name=last_name,
-                phone_number=phone_number
+                phone_number=phone_number,
+                submit_username=submit_username
             )
             self.session.add(new_user)
             self.session.commit()
             return True
-        except BaseException:
+        except BaseException as e:
+            print(e)
             self.session.rollback()
-            return False
+            raise False
 
     def insert_new_adver(self,
                          user_id: int,
@@ -175,9 +186,10 @@ class AdvertisementDb:
             self.session.add(new_advertisement)
             self.session.commit()
             return new_advertisement.adv_id
-        except BaseException:
+        except BaseException as e:
+            print(e)
             self.session.rollback()
-            return None
+            raise False
 
     def get_user_info(self, user_id: int) -> Optional[dict]:
         """Get user information by user_id."""
@@ -189,12 +201,14 @@ class AdvertisementDb:
                     "username": user.username,
                     "first_name": user.first_name,
                     "last_name": user.last_name,
-                    "phone_number": user.phone_number
+                    "phone_number": user.phone_number,
+                    "submit_username": user.submit_username
                 }
             return None
-        except BaseException:
+        except BaseException as e:
+            print(e)
             self.session.rollback()
-            return False
+            raise False
 
     def get_adv_info(self, adv_id: int) -> Optional[dict]:
         """Get advertisement information by adv_id."""
@@ -208,9 +222,10 @@ class AdvertisementDb:
                     "inserted_at": advertisement.inserted_at.isoformat()
                 }
             return None
-        except BaseException:
+        except BaseException as e:
+            print(e)
             self.session.rollback()
-            return False
+            raise False
 
     def check_user_is_admin(self, user_id: int) -> bool:
         try:
@@ -223,8 +238,9 @@ class AdvertisementDb:
                 return True
             return False
         except Exception as e:
-            print(f"Error checking if user is admin: {e}")
-            return False
+            print(e)
+            self.session.rollback()
+            raise False
 
     def update_user_info(
         self,
@@ -265,8 +281,43 @@ class AdvertisementDb:
             return False
 
         except Exception as e:
+            print(e)
             self.session.rollback()
-            raise e
+            raise False
+        
+
+    def update_advertisment_info(
+        self,
+        adv_id: int,
+        **kwargs
+    ) -> bool:
+        """
+        Update advertisement info using keyword arguments.
+
+        Args:
+            db (Session): SQLAlchemy database session.
+            adv_id (int): ID of the advertisement to update.
+            **kwargs: Fields and values to update.
+
+        Returns:
+            bool: True if update was successful, False otherwise.
+        """
+        try:
+            adv: Optional[Advertisement] = self.session.query(Advertisement).filter_by(adv_id=adv_id).first()
+
+            if not adv:
+                return False
+
+            for key, value in kwargs.items():
+                if hasattr(adv, key):
+                    setattr(adv, key, value)
+
+            self.session.commit()
+            return True
+        except Exception as e:
+            print(e)
+            self.session.rollback()
+            raise False
 
     def __enter__(self):
         return self
