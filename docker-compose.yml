@@ -6,11 +6,47 @@ services:
       context: .
       dockerfile: ./etc/docker_files/Dockerfile 
     container_name: telegram-bot
+    command:  poetry run python src/user_bot.py
     restart: always
     environment:
       - PYTHONUNBUFFERED=1
     volumes:
       - .:/app
+    depends_on:
+      - postgres
+    networks:
+      - bot-network
+
+
+  admin_bot:
+    build:
+      context: .
+      dockerfile: ./etc/docker_files/Dockerfile 
+    container_name: admin-bot
+    command:  poetry run python src/admin_bot.py
+    restart: always
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+    depends_on:
+      - postgres
+    networks:
+      - bot-network
+  
+  admin-ui:
+    build:
+      context: .
+      dockerfile: ./etc/docker_files/Dockerfile 
+    container_name: admin-ui
+    command:  poetry run uvicorn src.admin_ui:app --host 0.0.0.0 --port 3000 --reload
+    restart: always
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+    ports:
+      - 3000:3000
     depends_on:
       - postgres
     networks:
